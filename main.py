@@ -22,12 +22,14 @@ if not config_settings["DEFAULT"].getboolean("enabled"):
     USERNAME = input("Duolingo Username: ")
     PASSWORD = input("Duolingo Password: ")
     LANGUAGE = input("Language: ")
+    TARGET_LANGUAGE = input("Output Language: ")
     FONT = "arial"
     SIZE = 200
 else:
     USERNAME = config_settings["CREDENTIALS"]["username"]
     PASSWORD = config_settings["CREDENTIALS"]["password"]
     LANGUAGE = config_settings["CREDENTIALS"]["language"]
+    TARGET_LANGUAGE = config_settings["CREDENTIALS"]["translation_language"]
     FONT = config_settings["CARDS"]["font"]
     SIZE = config_settings["CARDS"].getint("size")
 
@@ -41,6 +43,7 @@ except DuolingoException as e:
 
 # Get Language Abbreviation
 LANGUAGE_ABR = duolingo_client.get_abbreviation_of(LANGUAGE)
+TARGET_LANGUAGE = duolingo_client.get_abbreviation_of(TARGET_LANGUAGE)
 
 # Get Known Topics
 topics = duolingo_client.get_known_topics(lang=LANGUAGE_ABR)
@@ -104,7 +107,7 @@ for word in words:
     words_to_translation.append(word_string)
 
 # Pull Translations
-translations = duolingo_client.get_translations(words_to_translation, source=LANGUAGE_ABR, target="en")
+translations = duolingo_client.get_translations(words_to_translation, source=LANGUAGE_ABR, target=TARGET_LANGUAGE)
 for word in word_list:
     # Add Translation To Word Object
     translation = translations[word.word_string]
