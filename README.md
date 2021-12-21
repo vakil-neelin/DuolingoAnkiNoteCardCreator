@@ -5,8 +5,8 @@ studying. The project allows users to build their language learning toolset by a
 be uploaded to Anki. The program will create images and audio files for the front of the card with the output language
 translations on the back. 
 
-Currently, the program does not automatically add the decks, cards, or media files to Anki. The program only creates 
-the files under the Decks folder.
+Currently, the program does not automatically add the cards to Anki. The program only creates the decks and uploads 
+the media files if enabled. This feature is set to true by default, but can be changed in the settings file.
 
 ## Set Up
 

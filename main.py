@@ -4,6 +4,7 @@ import os
 from PIL import Image, ImageDraw, ImageFont
 from gtts import gTTS
 from Word import Word
+from AnkiConnect import invoke
 from duolingo import Duolingo, DuolingoException
 from configparser import ConfigParser
 
@@ -18,11 +19,12 @@ gtts_log.setLevel(logging.WARN)
 config_settings = ConfigParser()
 config_settings.read("settings.ini")
 
-if not config_settings["DEFAULT"].getboolean("enabled"):
+if not config_settings.getboolean("DEFAULT", "enabled"):
     USERNAME = input("Duolingo Username: ")
     PASSWORD = input("Duolingo Password: ")
     LANGUAGE = input("Language: ")
     TARGET_LANGUAGE = input("Output Language: ")
+    ANKI_UPLOAD = bool(input("Upload Via Anki Connect(true/false): "))
     FONT = "arial"
     SIZE = 200
 else:
@@ -32,6 +34,7 @@ else:
     TARGET_LANGUAGE = config_settings["CREDENTIALS"]["translation_language"]
     FONT = config_settings["CARDS"]["font"]
     SIZE = config_settings["CARDS"].getint("size")
+    ANKI_UPLOAD = config_settings.getboolean("UPLOAD", "anki_connect")
 
 # Create The Duolingo Client
 try:
@@ -62,18 +65,23 @@ logging.info("Parsing Words...")
 # Parse And Sort Words
 for word in words:
     skill = word["skill"]
-    normalized_string = word["normalized_string"]
+    normalized_string = word["normalized_string"].strip()
     word_string = word["word_string"]
     audio_filename = normalized_string + ".mp3"
-    audio_path = os.path.join(os.getcwd(), "Decks\\Audio_Files\\",  audio_filename)
     image_filename = normalized_string + ".png"
-    image_path = os.path.join(os.getcwd(), "Decks\\Image_Files\\",  image_filename)
 
-    logging.debug("Skill: {}".format(skill))
-    logging.debug("Normalized Word: {}".format(normalized_string))
-    logging.debug("Word: {}".format(word_string))
-    logging.debug("Audio File: {}".format(audio_filename))
-    logging.debug("Image File: {}".format(image_filename))
+    # Create Temp Word
+    temp_word = Word(normalized_string, word_string, skill, audio_filename, image_filename)
+
+    # Create Media File Paths
+    audio_path = os.path.join(os.getcwd(), "Decks\\Audio_Files\\",  temp_word.audio_file)
+    image_path = os.path.join(os.getcwd(), "Decks\\Image_Files\\",  temp_word.image_file)
+
+    logging.debug("Skill: {}".format(temp_word.skill))
+    logging.debug("Normalized Word: {}".format(temp_word.normalized_word))
+    logging.debug("Word: {}".format(temp_word.word_string))
+    logging.debug("Audio File: {}".format(temp_word.audio_file))
+    logging.debug("Image File: {}".format(temp_word.image_file))
 
     # Create Audio File If It Doesn't Exist
     if not os.path.exists(audio_path):
@@ -102,7 +110,6 @@ for word in words:
             img.save(image_file)
             image_file.close()
 
-    temp_word = Word(normalized_string, word_string, skill, audio_filename, image_filename)
     word_list.append(temp_word)
     words_to_translation.append(word_string)
 
@@ -114,7 +121,10 @@ for word in word_list:
     word.translation = ",".join(translation)
 
     # Add Word To Skill Dictionary
-    decks[word.skill].append(word)
+    try:
+        decks[word.skill].append(word)
+    except KeyError:
+        decks[word.skill] = [word]
 
 # Create CSVs For Skills
 for topic in decks.keys():
@@ -138,3 +148,30 @@ for topic in decks.keys():
             f.write(tags + "\n")
             f.flush()
         f.close()
+
+if ANKI_UPLOAD:
+    # Create Decks For Words
+    logging.info("Creating Decks...")
+    parent_deck = config_settings["UPLOAD"].getboolean("create_parent_language_deck")
+    for topic in decks.keys():
+        if parent_deck:
+            deck_name = LANGUAGE + "::" + str(topic).replace(" ", "_")
+        else:
+            deck_name = str(topic).replace(" ", "_")
+        invoke('createDeck', deck=deck_name)
+
+    # Upload Media Files
+    logging.info("Uploading Media...")
+    logging.info("Number Of Word Files To Upload: {}".format(len(word_list)))
+    count = 0
+    for word in word_list:
+        # Upload Audio File
+        audio_file_path = os.path.join(os.getcwd(), "Decks\\Audio_Files\\",  word.audio_file)
+        invoke('storeMediaFile', filename=word.audio_file, path=audio_file_path)
+
+        # Upload Image File
+        image_file_path = os.path.join(os.getcwd(), "Decks\\Image_Files\\",  word.image_file)
+        invoke('storeMediaFile', filename=word.image_file, path=image_file_path)
+
+        count += 1
+        logging.info("Words Uploaded: {}".format(count))

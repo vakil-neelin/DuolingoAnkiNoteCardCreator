@@ -5,7 +5,13 @@ class Word(object):
         self._normalized_word = normalized_word
         self._word_string = word_string
         self._skill = skill
+
+        audio_file = audio_file.strip()
+        audio_file = audio_file.replace(" ", "_")
         self._audio_file = audio_file
+
+        image_file = image_file.strip()
+        image_file = image_file.replace(" ", "_")
         self._image_file = image_file
         self._translation = translation
         return
@@ -51,6 +57,8 @@ class Word(object):
 
     @audio_file.setter
     def audio_file(self, value):
+        value = value.strip()
+        value = value.replace(" ", "_")
         self._audio_file = value
         return
 
@@ -60,6 +68,8 @@ class Word(object):
 
     @image_file.setter
     def image_file(self, value):
+        value = value.strip()
+        value = value.replace(" ", "_")
         self._image_file = value
         return
 
