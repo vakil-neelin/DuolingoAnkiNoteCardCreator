@@ -10,7 +10,13 @@ the media files if enabled. This feature is set to true by default, but can be c
 
 ## Set Up
 
-First you will need to install the needed packages so the Python code can run correctly. You can either install 
+First you will need to have the Anki Desktop application installed as well as the AnkiConnect add-on.
+
+[Anki Desktop](https://apps.ankiweb.net/)
+
+[AnkiConnect](https://ankiweb.net/shared/info/2055492159)
+
+Next you will need to install the needed packages so the Python code can run correctly. You can either install 
 these packages onto your systems Python 3.8 distribution or create a Virtual Environment. With either option you can 
 run the below command once you are in the desired environment to install the packages.
 
