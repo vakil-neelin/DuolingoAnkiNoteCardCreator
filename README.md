@@ -3,10 +3,7 @@
 This project allows users to pull their known duolingo vocabulary and create CSVs that can be uploaded to Anki for 
 studying. The project allows users to build their language learning toolset by automatically creating files that can 
 be uploaded to Anki. The program will create images and audio files for the front of the card with the output language
-translations on the back. 
-
-Currently, the program does not automatically add the cards to Anki. The program only creates the decks and uploads 
-the media files if enabled. This feature is set to true by default, but can be changed in the settings file.
+translations on the back amd upload them via AnkiConnect.
 
 ## Set Up
 

@@ -4,7 +4,7 @@ import os
 from PIL import Image, ImageDraw, ImageFont
 from gtts import gTTS
 from Word import Word
-from AnkiConnect import invoke
+from AnkiConnect import create_deck, upload_media_file, media_file_exists, create_note_card, sync
 from duolingo import Duolingo, DuolingoException
 from configparser import ConfigParser
 
@@ -19,14 +19,29 @@ gtts_log.setLevel(logging.WARN)
 config_settings = ConfigParser()
 config_settings.read("settings.ini")
 
+# Defaults
+TARGET_LANGUAGE = "en"
+PARENT_DECK = False
+DECK_TYPE = None
+FONT = "arial"
+SIZE = 200
+KEEP_AUDIO = False
+KEEP_IMAGE = False
+
 if not config_settings.getboolean("DEFAULT", "enabled"):
     USERNAME = input("Duolingo Username: ")
     PASSWORD = input("Duolingo Password: ")
     LANGUAGE = input("Language: ")
     TARGET_LANGUAGE = input("Output Language: ")
     ANKI_UPLOAD = bool(input("Upload Via Anki Connect(true/false): "))
-    FONT = "arial"
-    SIZE = 200
+    if ANKI_UPLOAD:
+        PARENT_DECK = bool(input("Create Parent Language Deck(true/false): "))
+        DECK_TYPE = input("Deck Type(Basic/Basic (and reversed card)): ")
+        if DECK_TYPE not in ["Basic", "Basic (and reversed card)"]:
+            logging.error("Invalid Deck Type! Must Be Basic or Basic (and reversed card)")
+            sys.exit(0)
+        KEEP_AUDIO = bool(input("Keep Audio File After Upload(true/false): "))
+        KEEP_IMAGE = bool(input("Keep Image File After Upload(true/false): "))
 else:
     USERNAME = config_settings["CREDENTIALS"]["username"]
     PASSWORD = config_settings["CREDENTIALS"]["password"]
@@ -35,6 +50,11 @@ else:
     FONT = config_settings["CARDS"]["font"]
     SIZE = config_settings["CARDS"].getint("size")
     ANKI_UPLOAD = config_settings.getboolean("UPLOAD", "anki_connect")
+    if ANKI_UPLOAD:
+        PARENT_DECK = config_settings["UPLOAD"].getboolean("create_parent_language_deck")
+        DECK_TYPE = config_settings["UPLOAD"]["deck_type"]
+        KEEP_AUDIO = config_settings["UPLOAD"].getboolean("keep_audio_after_upload")
+        KEEP_IMAGE = config_settings["UPLOAD"].getboolean("keep_image_after_upload")
 
 # Create The Duolingo Client
 try:
@@ -46,7 +66,6 @@ except DuolingoException as e:
 
 # Get Language Abbreviation
 LANGUAGE_ABR = duolingo_client.get_abbreviation_of(LANGUAGE)
-TARGET_LANGUAGE = duolingo_client.get_abbreviation_of(TARGET_LANGUAGE)
 
 # Get Known Topics
 topics = duolingo_client.get_known_topics(lang=LANGUAGE_ABR)
@@ -126,7 +145,18 @@ for word in word_list:
     except KeyError:
         decks[word.skill] = [word]
 
+if ANKI_UPLOAD:
+    # Create Decks For Words
+    logging.info("Creating Decks...")
+    for topic in decks.keys():
+        if PARENT_DECK:
+            deck_name = LANGUAGE + "::" + str(topic).replace(" ", "_")
+        else:
+            deck_name = str(topic).replace(" ", "_")
+        create_deck(deck_name)
+
 # Create CSVs For Skills
+logging.info("Creating CSVs...")
 for topic in decks.keys():
     filename = "Decks/" + str(topic).replace(" ", "_") + ".csv"
     with open(filename, "w", encoding="UTF-8") as f:
@@ -147,31 +177,39 @@ for topic in decks.keys():
             f.write(card_back + ",")
             f.write(tags + "\n")
             f.flush()
+
+            # Add Notecard To Anki If Enabled
+            if ANKI_UPLOAD:
+                logging.info("Uploading Notecard {}...".format(word.normalized_word))
+                if PARENT_DECK:
+                    deck_name = LANGUAGE + "::" + str(topic).replace(" ", "_")
+                else:
+                    deck_name = str(topic).replace(" ", "_")
+                create_note_card(card_front, card_back, tags, deck_name, DECK_TYPE)
         f.close()
 
 if ANKI_UPLOAD:
-    # Create Decks For Words
-    logging.info("Creating Decks...")
-    parent_deck = config_settings["UPLOAD"].getboolean("create_parent_language_deck")
-    for topic in decks.keys():
-        if parent_deck:
-            deck_name = LANGUAGE + "::" + str(topic).replace(" ", "_")
-        else:
-            deck_name = str(topic).replace(" ", "_")
-        invoke('createDeck', deck=deck_name)
-
     # Upload Media Files
     logging.info("Uploading Media...")
     logging.info("Number Of Word Files To Upload: {}".format(len(word_list)))
     count = 0
     for word in word_list:
         # Upload Audio File
-        audio_file_path = os.path.join(os.getcwd(), "Decks\\Audio_Files\\",  word.audio_file)
-        invoke('storeMediaFile', filename=word.audio_file, path=audio_file_path)
+        if not media_file_exists(word.audio_file):
+            audio_file_path = os.path.join(os.getcwd(), "Decks\\Audio_Files\\",  word.audio_file)
+            upload_media_file(word.audio_file, audio_file_path)
+            if not KEEP_AUDIO:
+                os.remove(audio_file_path)
 
         # Upload Image File
-        image_file_path = os.path.join(os.getcwd(), "Decks\\Image_Files\\",  word.image_file)
-        invoke('storeMediaFile', filename=word.image_file, path=image_file_path)
+        if not media_file_exists(word.image_file):
+            image_file_path = os.path.join(os.getcwd(), "Decks\\Image_Files\\",  word.image_file)
+            upload_media_file(word.image_file, image_file_path)
+            if not KEEP_IMAGE:
+                os.remove(image_file_path)
 
         count += 1
         logging.info("Words Uploaded: {}".format(count))
+
+# Syncs Anki
+sync()
