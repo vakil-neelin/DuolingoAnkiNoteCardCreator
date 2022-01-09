@@ -201,8 +201,9 @@ for topic in decks.keys():
 
 if ANKI_UPLOAD:
     # Upload Media Files
+    total_words = len(word_list)
     logging.info("Uploading Media...")
-    logging.info("Number Of Word Files To Upload: {}".format(len(word_list)))
+    logging.info("Number Of Word Files To Upload: {}".format(total_words))
     count = 0
     for word in word_list:
         # Upload Audio File
@@ -220,7 +221,7 @@ if ANKI_UPLOAD:
                 os.remove(image_file_path)
 
         count += 1
-        logging.info("Words Uploaded: {}".format(count))
+        logging.info("Words Uploaded: {}/{}".format(count, total_words))
 
 # Syncs Anki
 sync()
