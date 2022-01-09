@@ -92,6 +92,10 @@ for word in words:
     # Create Temp Word
     temp_word = Word(normalized_string, word_string, skill, audio_filename, image_filename)
 
+    # Skip Duplicates
+    if temp_word in word_list:
+        continue
+
     # Create Media File Paths
     audio_path = os.path.join(os.getcwd(), "Decks\\Audio_Files\\",  temp_word.audio_file)
     image_path = os.path.join(os.getcwd(), "Decks\\Image_Files\\",  temp_word.image_file)
@@ -137,6 +141,13 @@ translations = duolingo_client.get_translations(words_to_translation, source=LAN
 for word in word_list:
     # Add Translation To Word Object
     translation = translations[word.word_string]
+    if not translation:
+        translation = input("What is the meaning of {} From {}? (Comma Seperated, n To Skip)"
+                            .format(word.normalized_word, word.skill))
+        if translation:
+            if translation == "n":
+                continue
+
     word.translation = ",".join(translation)
 
     # Add Word To Skill Dictionary

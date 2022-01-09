@@ -82,3 +82,6 @@ class Word(object):
         self._translation = value
         return
 
+    def __eq__(self, other):
+        return self.word_string == other.word_string and \
+               self.skill == other.skill
